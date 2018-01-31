@@ -19,13 +19,16 @@ public:
 
 SymmetryApp::SymmetryApp() {
 	tr = { { 2, 4 },{ 4, 6 },{ 2, 6 } };
-	l = { { 0, 2 },{ 600, 302 } };
+	double k = .5, b = 2.;
+
+	int x_max = 800, y_max = 600;
+	l = { { 0, b },{ double(x_max), x_max * k + b } };
 	tr2 = tr.get_symmetric(l);
 	red = ci::Color(1.f, 0.f, 0.f);
 	green = ci::Color(0.f, 1.f, 0.f);
 	blue = ci::Color(0.f, 0.f, 1.f);
 	white = ci::Color(1.f, 1.f, 1.f);
-	this->setWindowSize(800, 600);
+	this->setWindowSize(x_max, y_max);
 }
 
 void SymmetryApp::draw()
