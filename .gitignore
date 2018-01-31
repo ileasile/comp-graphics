@@ -1,0 +1,8 @@
+armadillo-8.300.4/**
+glew-2.1.0/**
+glfw-3.2.1/**
+OpenBLAS-0.2.20/**
+**/.vs/**
+**/Debug/**
+**/Release/**
+*.lib
