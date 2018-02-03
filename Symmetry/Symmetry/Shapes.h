@@ -54,7 +54,7 @@ public:
 			p[i] = p1[i];
 		}
 	}
-	Line(std::initializer_list<Point> v) {
+	Line(const std::initializer_list<Point> & v) {
 		Point * pb = p;
 		for (auto & pt : v) {
 			*(pb++) = pt;
@@ -76,7 +76,7 @@ public:
 		}
 	}
 
-	Triangle(std::initializer_list<Point> v) {
+	Triangle(const std::initializer_list<Point> & v) {
 		Point * pb = p;
 		for (auto & pt : v) {
 			*(pb ++) = pt;
