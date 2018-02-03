@@ -1,17 +1,19 @@
 #include "Shapes.h"
 
 Point Point::get_symmetric_pt(const Line & l) {
-	double a[4];
-	double b[2];
+	boost::numeric::ublas::matrix<double> a(2, 2);
+	boost::numeric::ublas::vector<double> b(2);
 	double xp = l.p[1].x - l.p[0].x;
 	double yp = l.p[1].y - l.p[0].y;
-	a[0] = xp;
-	a[1] = yp;
-	a[2] = yp;
-	a[3] = -xp;
-	b[0] = x * xp + y * yp;
-	b[1] = xp * y - yp * x + 2 * (l.p[0].x * yp - l.p[0].y * xp);
+	a(0, 0) = xp;
+	a(0, 1) = yp;
+	a(1, 0) = yp;
+	a(1, 1) = -xp;
+	b(0) = x * xp + y * yp;
+	b(1) = xp * y - yp * x + 2 * (l.p[0].x * yp - l.p[0].y * xp);
 	return solve_system(a, b);
+
+
 }
 
 Triangle Triangle::get_symmetric(const Line & l) {

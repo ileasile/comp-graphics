@@ -2670,10 +2670,10 @@ namespace boost { namespace numeric { namespace ublas {
                 singular ().raise ();
 #endif
             for (difference_type l = size2 - 1; l >= 0; -- l) {
-                value_type t = e2 () (n, l) /= e1 () (n, n);
+                value_type t = e2() (n, l) /= e1 () (n, n);
                 if (t != value_type/*zero*/()) {
                     for (difference_type m = n - 1; m >= 0; -- m)
-                        e2 () (m, l) -= e1 () (m, n) * t;
+                        e2() (m, l) -= e1 () (m, n) * t;
                 }
             }
         }

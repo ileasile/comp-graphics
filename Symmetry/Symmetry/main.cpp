@@ -2,6 +2,7 @@
 
 #include "GraphicException.h"
 #include "Shapes.h"
+#include <INIReader.h>
 
 class SymmetryApp : public ci::app::App {
 	Triangle tr, tr2;
@@ -18,8 +19,18 @@ public:
 };
 
 SymmetryApp::SymmetryApp() {
-	tr = { { 2, 4 },{ 4, 6 },{ 2, 6 } };
-	double k = .5, b = 2.;
+	INIReader conf("config.ini");
+	double x[3];
+	double y[3];
+	for (int i = 0; i < 3; ++i) {
+		auto s = std::to_string(i + 1);
+		x[i] = conf.GetReal("Task", "x" + s, 0);
+		y[i] = conf.GetReal("Task", "y" + s, 0);
+	}
+
+	tr = { { x[0], y[0] },{ x[1], y[1] },{ x[2], y[2] } };
+	double	k = conf.GetReal("Task", "k", .5), 
+			b = conf.GetReal("Task", "b", 2.);
 
 	int x_max = 800, y_max = 600;
 	l = { { 0, b },{ double(x_max), x_max * k + b } };

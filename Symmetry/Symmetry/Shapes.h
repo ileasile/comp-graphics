@@ -2,9 +2,16 @@
 
 //#include <armadillo.h>
 #include <initializer_list>
+#include <boost/numeric/ublas/vector.hpp>
+#include <boost/numeric/ublas/vector_proxy.hpp>
+#include <boost/numeric/ublas/matrix.hpp>
+#include <boost/numeric/ublas/triangular.hpp>
+#include <boost/numeric/ublas/lu.hpp>
+#include <boost/numeric/ublas/io.hpp>
 #include "cinder/app/App.h"
 #include "cinder/app/RendererGl.h"
 #include "cinder/gl/gl.h"
+
 
 class Point;
 class Line;
@@ -19,11 +26,14 @@ public:
 class Point {
 private:
 	// Solves 2-range linear system
-	static Point solve_system(double * a, double * b) {
-		double d = a[0] * a[3] - a[1] * a[2];
-		double d1 = b[0] * a[3] - b[1] * a[1];
-		double d2 = a[0] * b[1] - b[0] * a[2];
-		return Point(d1 / d, d2 / d);
+	static Point solve_system(boost::numeric::ublas::matrix<double> & a, boost::numeric::ublas::vector<double> & b) {
+		boost::numeric::ublas::matrix<double> Ainv = boost::numeric::ublas::identity_matrix<double>(a.size1());
+		boost::numeric::ublas:: permutation_matrix<size_t> pm(a.size1());
+		boost::numeric::ublas::lu_factorize(a, pm);
+		boost::numeric::ublas::lu_substitute(a, pm, Ainv);
+
+		auto x = boost::numeric::ublas::prod(Ainv, b);
+		return Point(x(0), x(1));
 	}
 public:
 	double x, y;
