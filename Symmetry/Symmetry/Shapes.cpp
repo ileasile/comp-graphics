@@ -12,8 +12,6 @@ Point Point::get_symmetric_pt(const Line & l) {
 	b(0) = x * xp + y * yp;
 	b(1) = xp * y - yp * x + 2 * (l.p[0].x * yp - l.p[0].y * xp);
 	return solve_system(a, b);
-
-
 }
 
 Triangle Triangle::get_symmetric(const Line & l) {
