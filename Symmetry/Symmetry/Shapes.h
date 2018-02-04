@@ -24,16 +24,21 @@ public:
 };
 
 class Point {
+	
 private:
-	// Solves 2-range linear system
-	static Point solve_system(boost::numeric::ublas::matrix<double> & a, boost::numeric::ublas::vector<double> & b) {
-		boost::numeric::ublas::matrix<double> Ainv = boost::numeric::ublas::identity_matrix<double>(a.size1());
-		boost::numeric::ublas:: permutation_matrix<size_t> pm(a.size1());
-		boost::numeric::ublas::lu_factorize(a, pm);
-		boost::numeric::ublas::lu_substitute(a, pm, Ainv);
+	// Solves linear system Ax = b
+	static boost::numeric::ublas::vector<double> 
+		solve_system(
+			boost::numeric::ublas::matrix<double> & a, 
+			boost::numeric::ublas::vector<double> & b) {
+		namespace blas = boost::numeric::ublas;
 
-		auto x = boost::numeric::ublas::prod(Ainv, b);
-		return Point(x(0), x(1));
+		blas::matrix<double> Ainv = blas::identity_matrix<double>(a.size1());
+		blas:: permutation_matrix<size_t> pm(a.size1());
+		blas::lu_factorize(a, pm);
+		blas::lu_substitute(a, pm, Ainv);
+
+		return blas::prod(Ainv, b);
 	}
 public:
 	double x, y;
