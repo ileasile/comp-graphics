@@ -27,3 +27,21 @@ Triangle Triangle::get_symmetric(const Line & l) {
 void draw_line(const Point & p1, const Point & p2) {
 	cinder::gl::drawLine(glm::vec2(p1.x, p1.y), glm::vec2(p2.x, p2.y));
 }
+
+ParametricShapeDrawable ParametricShape::get_drawable(double a, double b, double h) {
+	return ParametricShapeDrawable(*this, a, b, h);
+}
+
+ParametricShapeTranslator ParametricShape::transform(
+	const boost::numeric::ublas::matrix<double>& A, 
+	const boost::numeric::ublas::vector<double>& b)
+{
+	return ParametricShapeTranslator(this, A, b);
+}
+
+ParametricShapeTranslator ParametricShape::shift(double shift_x, double shift_y) {
+	boost::numeric::ublas::identity_matrix<double> A(2);
+	boost::numeric::ublas::vector<double> b(2);
+	b(0) = shift_x; b(1) = shift_y;
+	return transform(A, b);
+}

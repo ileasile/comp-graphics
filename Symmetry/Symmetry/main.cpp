@@ -7,6 +7,9 @@
 class SymmetryApp : public ci::app::App {
 	Triangle tr, tr2;
 	Line l;
+	ParametricShapeDrawable d_el;
+	CEllipse * el;
+	ParametricShapeTranslator tr_el;
 	ci::Color red, green, blue, white;
 public:
 	SymmetryApp();
@@ -35,6 +38,12 @@ SymmetryApp::SymmetryApp() {
 	int x_max = 800, y_max = 600;
 	l = { { 0, b },{ double(x_max), x_max * k + b } };
 	tr2 = tr.get_symmetric(l);
+
+	el = new CEllipse(3., 4.);
+	tr_el = el->shift(3, 4);
+	d_el = el->get_drawable();
+	d_el.set_shape(&tr_el);
+
 	red = ci::Color(1.f, 0.f, 0.f);
 	green = ci::Color(0.f, 1.f, 0.f);
 	blue = ci::Color(0.f, 0.f, 1.f);
@@ -50,6 +59,7 @@ void SymmetryApp::draw()
 	draw(&l, red, 3);
 	draw(&tr, green, 3);
 	draw(&tr2, blue, 3);
+	//draw(&d_el, red, 4);
 	ci::gl::popModelMatrix();
 }
 

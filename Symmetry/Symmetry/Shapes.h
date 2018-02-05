@@ -11,12 +11,15 @@
 #include "cinder/app/App.h"
 #include "cinder/app/RendererGl.h"
 #include "cinder/gl/gl.h"
-
+#include <cmath>
+#define PI 3.1415926
 
 class Point;
 class Line;
 class Triangle;
-
+class ParametricShape;
+class ParametricShapeDrawable;
+class ParametricShapeTranslator;
 
 class Drawable {
 public:
@@ -95,5 +98,89 @@ public:
 			int j = (i + 1) % 3;
 			draw_line(p[i], p[j]);
 		}
+	}
+};
+
+class ParametricShape {
+public:
+	virtual Point pt(double t) const = 0;
+	double x(double t) const{
+		return pt(t).x;
+	}
+	double y(double t) const{
+		return pt(t).y;
+	}
+	ParametricShapeDrawable get_drawable(double a, double b, double h);
+	ParametricShapeTranslator transform(
+		const boost::numeric::ublas::matrix<double> & A,
+		const boost::numeric::ublas::vector<double> & b);
+	ParametricShapeTranslator shift(double shift_x, double shift_y);
+};
+
+class ParametricShapeTranslator: public ParametricShape {
+	ParametricShape *shape;
+	boost::numeric::ublas::matrix<double> A;
+	boost::numeric::ublas::vector<double> b;
+public:
+	ParametricShapeTranslator(){}
+
+	ParametricShapeTranslator(
+		ParametricShape * shape,
+		const boost::numeric::ublas::matrix<double> & A,
+		const boost::numeric::ublas::vector<double> & b) {
+		
+		this->shape = shape;
+		this->A = A;
+		this->b = b;
+	}
+
+	virtual Point pt(double t) const{
+		auto p = shape->pt(t);
+		boost::numeric::ublas::vector<double> x(2);
+		x(0) = p.x; x(1) = p.y;
+		auto y = boost::numeric::ublas::prod(A, x) + b;
+		return Point(y(0), y(1));
+	}
+};
+
+class ParametricShapeDrawable : public Drawable {
+	const ParametricShape * shape;
+	double a, b, h;
+public:
+	ParametricShapeDrawable() {}
+
+	ParametricShapeDrawable(const ParametricShape & shape, double a, double b, double h) {
+		this->shape = &shape;
+		this->a = a;
+		this->b = b;
+		this->h = h;
+	}
+
+	void set_shape(const ParametricShape * shape) {
+		this->shape = shape;
+	}
+
+	virtual void draw() {
+		Point fr, to;
+		fr = shape->pt(a);
+		for (double t = a+h; t <= b; t += h) {
+			to = shape->pt(t);
+			draw_line(fr, to);
+			fr = to;
+		}
+	}
+};
+
+class CEllipse : public ParametricShape {
+	double a, b;
+public:
+	CEllipse() {}
+	CEllipse(double a, double b): a(a), b(b){}
+	virtual Point pt(double t) const{
+		return Point(a * cos(t), b * sin(t));
+	}
+	ParametricShapeDrawable get_drawable(int n_pt = 100) {
+		double h = 2 * PI / n_pt;
+		return ParametricShape::get_drawable(0, 2 * PI + h, h);
 	}
 };
