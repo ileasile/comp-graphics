@@ -16,10 +16,39 @@ Point Point::get_symmetric_pt(const Line & l) {
 	return Point(x(0), x(1));
 }
 
+Point Point::get_symmetric_pt_2(const Line & l) {
+	namespace blas = boost::numeric::ublas;
+	blas::matrix<double> a = blas::identity_matrix<double>(3);
+	blas::matrix<double> b = blas::identity_matrix<double>(3);
+	blas::matrix<double> t = blas::identity_matrix<double>(3);
+	blas::vector<double> x_(3);
+	x_(0) = x; x_(1) = y; x_(2) = 1;
+	
+	double xp = l.p[1].x - l.p[0].x;
+	double yp = l.p[1].y - l.p[0].y;
+	
+	double phi = atan2(yp, xp);
+	a(0, 0) = a(1, 1) = cos(-phi);
+	a(0, 1) = -(a(1, 0) = sin(-phi));
+	t(1, 1) = -1;
+	b(0, 2) = -l.p[0].x;
+	b(1, 2) = -l.p[0].y;
+
+	blas::matrix<double> c = blas::prod(a, b);
+	blas::matrix<double> cinv = inverse(c);
+	blas::matrix<double> ainv = inverse(a);
+	
+	blas::vector<double> y = blas::prod(c, x_);
+	blas::vector<double> y1 = blas::prod(t, y);
+	blas::vector<double> y2 = blas::prod(cinv, y1);
+
+	return Point(y2(0), y2(1));
+}
+
 Triangle Triangle::get_symmetric(const Line & l) {
 	Point p1[3];
 	for (int i = 0; i < 3; ++i) {
-		p1[i] = p[i].get_symmetric_pt(l);
+		p1[i] = p[i].get_symmetric_pt_2(l);
 	}
 	return Triangle(p1);
 }

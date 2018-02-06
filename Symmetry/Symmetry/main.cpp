@@ -35,8 +35,9 @@ SymmetryApp::SymmetryApp() {
 	double	k = conf.GetReal("Task", "k", .5), 
 			b = conf.GetReal("Task", "b", 2.);
 
+	int x_min = -800;
 	int x_max = 800, y_max = 600;
-	l = { { 0, b },{ double(x_max), x_max * k + b } };
+	l = { { double(x_min), x_min * k + b },{ double(x_max), x_max * k + b } };
 	tr2 = tr.get_symmetric(l);
 
 	el = new CEllipse(3., 4.);
@@ -55,7 +56,8 @@ void SymmetryApp::draw()
 {
 	ci::gl::clear(white);
 	ci::gl::pushModelMatrix();
-	ci::gl::scale(90., 90.);
+	ci::gl::scale(50., 50.);
+	ci::gl::translate(4, 4);
 	draw(&l, red, 3);
 	draw(&tr, green, 3);
 	draw(&tr2, blue, 3);

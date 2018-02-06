@@ -5,6 +5,7 @@
 #include <boost/numeric/ublas/vector.hpp>
 #include <boost/numeric/ublas/vector_proxy.hpp>
 #include <boost/numeric/ublas/matrix.hpp>
+#include <boost/numeric/ublas/operation.hpp>
 #include <boost/numeric/ublas/triangular.hpp>
 #include <boost/numeric/ublas/lu.hpp>
 #include <boost/numeric/ublas/io.hpp>
@@ -29,26 +30,35 @@ public:
 class Point {
 	
 private:
+
+	static boost::numeric::ublas::matrix<double> inverse(boost::numeric::ublas::matrix<double> a) {
+		namespace blas = boost::numeric::ublas;
+
+		blas::matrix<double> Ainv = blas::identity_matrix<double>(a.size1());
+		blas::permutation_matrix<size_t> pm(a.size1());
+		blas::lu_factorize(a, pm);
+		blas::lu_substitute(a, pm, Ainv);
+
+		return Ainv;
+	}
+
 	// Solves linear system Ax = b
 	static boost::numeric::ublas::vector<double> 
 		solve_system(
 			boost::numeric::ublas::matrix<double> & a, 
 			boost::numeric::ublas::vector<double> & b) {
 		namespace blas = boost::numeric::ublas;
-
-		blas::matrix<double> Ainv = blas::identity_matrix<double>(a.size1());
-		blas:: permutation_matrix<size_t> pm(a.size1());
-		blas::lu_factorize(a, pm);
-		blas::lu_substitute(a, pm, Ainv);
-
+		auto Ainv = inverse(a);
 		return blas::prod(Ainv, b);
 	}
+	
 public:
 	double x, y;
 	Point(){}
 	Point(double x, double y): x(x), y(y){}
 
 	Point get_symmetric_pt(const Line & l);
+	Point get_symmetric_pt_2(const Line & l);
 };
 
 void draw_line(const Point & p1, const Point & p2);
