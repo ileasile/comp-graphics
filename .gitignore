@@ -6,3 +6,5 @@ OpenBLAS-0.2.20/**
 **/Debug/**
 **/Release/**
 *.lib
+.idea
+*.zip
