@@ -1,32 +1,34 @@
-import matplotlib as mpl
+import numpy as np
+from math import sin, cos, atan2, sqrt
+from pyhull.convex_hull import qconvex
 from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
-import numpy as np
-import matplotlib.pyplot as plt
-from math import sin, cos
-from itertools import combinations as combs
-from scipy.spatial import ConvexHull
 
-def rotate_mtx(ax = 0., ay=0., az=0.):
+import mpl_backend_workaround
+import matplotlib.pyplot as plt
+
+
+def rotate_mtx(ax=0., ay=0., az=0.):
     x = np.array([
-        [1, 0, 0, 0],
-        [0, cos(ax), sin(ax), 0],
-        [0, -sin(ax), cos(ax), 0],
-        [0, 0, 0, 1],
+        [1, 0,          0,          0],
+        [0, cos(ax),    sin(ax),    0],
+        [0, -sin(ax),   cos(ax),    0],
+        [0, 0,          0,          1],
     ])
     y = np.array([
-        [cos(ay), 0, -sin(ay), 0],
-        [0, 1, 0, 0],
-        [sin(ay), 0, cos(ay), 0],
-        [0, 0, 0, 1],
+        [cos(ay),   0, -sin(ay),    0],
+        [0,         1, 0,           0],
+        [sin(ay),   0, cos(ay),     0],
+        [0,         0, 0,           1],
     ])
     z = np.array([
-        [cos(az), sin(az), 0, 0],
-        [-sin(az), cos(az), 0, 0],
-        [0, 0, 1, 0],
-        [0, 0, 0, 1],
+        [cos(az),   sin(az),    0, 0],
+        [-sin(az),  cos(az),    0, 0],
+        [0,         0,          1, 0],
+        [0,         0,          0, 1],
     ])
-    return np.matmul(z, np.matmul(y, x))
+    return x @ y @ z
+
 
 def perm_mtx(p):
     n = len(p)
@@ -34,6 +36,7 @@ def perm_mtx(p):
     for i, j in enumerate(p):
         r[i, j] = 1
     return r
+
 
 def trans_mtx(s: str):
     r = np.identity(4)
@@ -45,10 +48,12 @@ def trans_mtx(s: str):
         r[2, 2] = -1
     return r
 
+
 def shift_mtx(s):
     r = np.identity(4)
     r[3, :3] = np.array(s)
     return r
+
 
 t1 = np.diag([1/2., 1/3., 1., 1])
 t2 = np.diag([1, 1, 1, 1/2.])
@@ -56,11 +61,15 @@ t3 = np.array([[1, -0.85, 0.25, 0],
                [-0.75, 1, 0.7, 0],
                [0.5, 1, 1, 0],
                [0, 0, 0, 1]])
-t4 = rotate_mtx(ax = np.pi/2)
+t4 = rotate_mtx(ax=np.pi/2)
 t5 = perm_mtx([1, 2, 0, 3])
 t6 = trans_mtx('z')
 t7 = shift_mtx([2, 1, 0])
 
+_t8_shift = shift_mtx([0, -1.5, -1.5])
+t8 = _t8_shift @ rotate_mtx(ax=np.pi/6) @ np.linalg.inv(_t8_shift)
+
+t9 = _t8_shift @ rotate_mtx(ax=np.pi/6, ay=np.pi*3/2) @ np.linalg.inv(_t8_shift)
 
 
 class Shape:
@@ -70,7 +79,7 @@ class Shape:
     def transformed(self, transform):
         new_surfaces = []
         for t in self.s:
-            new_surfaces.append(np.matmul(t, transform))
+            new_surfaces.append(t @ transform)
         return Shape(new_surfaces)
 
     def draw(self, ax, col, transparency=0.5):
@@ -87,55 +96,91 @@ class Shape:
         ax.add_collection3d(poly)
 
 
-class Cube(Shape):
+class ConvexShape(Shape):
     def __init__(self, x):
-        coords = [
-            [0, 1, 2, 3],
-            [0, 1, 5, 4],
-            [0, 3, 7, 4],
-            [6, 5, 1, 2],
-            [6, 7, 3, 2],
-            [6, 5, 4, 7],
-        ]
+        y = x[:, :]
+        for i in range(3):
+            y[:, i] = x[:, i] / x[:, 3]
 
-        s = [x[c, :] for c in coords]
+        ch = qconvex("i Qi", y[:, :3])
+        coordinates = []
+        for s in ch[1:]:
+            facet = [int(i) for i in s.split(' ')]
+            coordinates.append(facet)
 
+        s = [x[c, :] for c in coordinates]
         super().__init__(s)
 
 
-class CubeCut(Shape):
-    def __init__(self, x):
-        coords = [
-            [0, 1, 2, 3, 4],
-            [0, 1, 6, 5],
-            [0, 5, 8, 4],
-            [7, 8, 5, 6],
-            [7, 9, 2, 1, 6],
-            [7, 8, 4, 3, 9],
-            [3, 2, 9]
-        ]
+class Plane(Shape):
+    def __init__(self, pts: np.ndarray):
+        self.x = pts[:, :3]
+        self.x0 = pts[0, :3]
+        x1 = pts[1, :3]
+        x2 = pts[2, :3]
+        u = x1 - self.x0
+        v = x2 - self.x0
+        self.n = np.cross(u, v)
 
-        s = [x[c, :] for c in coords]
-
+        s = [pts]
         super().__init__(s)
 
-def draw_show_figs(figs, cols, liml=-4, limr=4):
+    def origin_shift(self):
+        return shift_mtx((-self.x0).tolist())
+
+    def norm_rotate_oz(self):
+        phi = atan2(sqrt(self.n[0]**2 + self.n[1]**2), self.n[2])
+        psi = atan2(self.n[1], self.n[0])
+        r1 = rotate_mtx(az=-psi)
+        r2 = rotate_mtx(ay=-phi)
+        return r1 @ r2
+
+    def half_reflection(self):
+        return self.origin_shift() @ self.norm_rotate_oz()
+
+
+class Line:
+    def __init__(self, pts):
+        self.x = pts[:, :3]
+        self.x0 = pts[0, :3]
+        x1 = pts[1, :3]
+        self.u = x1 - self.x0
+
+    def origin_shift(self):
+        return shift_mtx((-self.x0).tolist())
+
+    def dir_rotate_to_oz(self):
+        phi = atan2(sqrt(self.u[0]**2 + self.u[1]**2), self.u[2])
+        psi = atan2(self.u[1], self.u[0])
+        r1 = rotate_mtx(az=-psi)
+        r2 = rotate_mtx(ay=-phi)
+        return r1 @ r2
+
+    def rotation_mtx(self, alpha):
+        d = self.origin_shift() @ self.dir_rotate_to_oz()
+        d_inv = np.linalg.inv(d)
+        return d @ rotate_mtx(az=alpha) @ d_inv
+
+
+def draw_show_figs(figs, cols, lim_l=-4, lim_r=4):
     fig = plt.figure()
+    manager = plt.get_current_fig_manager()
+    manager.window.wm_geometry("+100+100")
     ax = Axes3D(fig)
     ax.set_aspect('equal')
-    ax.set_xlim(liml, limr)
-    ax.set_ylim(liml, limr)
-    ax.set_zlim(liml, limr)
-
-    # ax.axhline(y=0, color='k')
-    # ax.axvline(x=0, color='k')
+    ax.set_xlim(lim_l, lim_r)
+    ax.set_ylim(lim_l, lim_r)
+    ax.set_zlim(lim_l, lim_r)
 
     for i, f in enumerate(figs):
         f.draw(ax, cols[i])
 
     plt.show()
 
-if __name__ == "__main__":
+
+def main():
+    print('Using MPL backend: {}'.format(mpl_backend_workaround.MPL_BACKEND_USED))
+
     plt.ioff()
 
     x = np.array([
@@ -164,8 +209,6 @@ if __name__ == "__main__":
 
     colors = [[1, 0, 0], [0, 0.5, 0], [0, 0, 0.7]]
 
-    # ch = ConvexHull(x, qhull_options="Qu")
-
     trans_cube = [
         [t1, 0, 3],
         [t2, 0, 6],
@@ -173,16 +216,48 @@ if __name__ == "__main__":
         [t4, -1, 3],
         [t5, 0, 3],
         [t6, 0, 3],
-        [t7, 0, 3],
+        [t7, 0, 5],
     ]
+    # Uncomment to skip these simple transforms
+    # trans_cube = []
 
-    cube = Cube(x)
+    cube = ConvexShape(x)
 
     for tr, l, r in trans_cube:
         c1 = cube.transformed(tr)
         draw_show_figs([cube, c1], colors, l, r)
 
-    ccube = CubeCut(y)
-    draw_show_figs([ccube], colors, 0, 3)
+    # Transformations 8 - 11 on cut cube
+    cut_cube = ConvexShape(y)
+    trans_cube_cut = [
+        [t8, 0, 5],
+        [t9, 0, 5],
+    ]
 
-    plt.show()
+    for tr, l, r in trans_cube_cut:
+        c1 = cut_cube.transformed(tr)
+        draw_show_figs([cut_cube, c1], colors, l, r)
+
+    # 10-th transform
+    line_ax = Line(y[[3, 9], :])
+    line_rotation = line_ax.rotation_mtx(-np.pi)
+    cut_cube_rotated = cut_cube.transformed(line_rotation)
+    draw_show_figs([cut_cube, cut_cube_rotated], colors, 0, 3)
+
+    # Last transform
+    pl = Plane(y[[2, 3, 9], :])
+
+    half_ref = pl.half_reflection()
+    half_ref_inv = np.linalg.inv(half_ref)
+    simple_ref = trans_mtx('z')
+
+    reflection_mtx = np.linalg.multi_dot([half_ref, simple_ref, half_ref_inv])
+    cut_cube_reflected = cut_cube.transformed(reflection_mtx)
+
+    pl_tr = pl.transformed(reflection_mtx)
+
+    draw_show_figs([cut_cube, pl_tr, cut_cube_reflected], colors, 0, 4)
+
+
+if __name__ == "__main__":
+    main()
