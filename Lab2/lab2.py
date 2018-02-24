@@ -162,8 +162,8 @@ class Line:
         return d @ rotate_mtx(az=alpha) @ d_inv
 
 
-def draw_show_figs(figs, cols, lim_l=-4, lim_r=4):
-    fig = plt.figure()
+def draw_show_figs(name: str, figs, cols, lim_l=-4, lim_r=4):
+    fig = plt.figure(name)
     manager = plt.get_current_fig_manager()
     manager.window.wm_geometry("+100+100")
     ax = Axes3D(fig)
@@ -223,26 +223,26 @@ def main():
 
     cube = ConvexShape(x)
 
-    for tr, l, r in trans_cube:
+    for num, (tr, l, r) in enumerate(trans_cube):
         c1 = cube.transformed(tr)
-        draw_show_figs([cube, c1], colors, l, r)
+        draw_show_figs("Transform #{}".format(num + 1), [cube, c1], colors, l, r)
 
     # Transformations 8 - 11 on cut cube
     cut_cube = ConvexShape(y)
     trans_cube_cut = [
-        [t8, 0, 5],
-        [t9, 0, 5],
+        [t8, 0, 5, "Transform #8"],
+        [t9, 0, 5, "Transform #9"],
     ]
 
-    for tr, l, r in trans_cube_cut:
+    for tr, l, r, name in trans_cube_cut:
         c1 = cut_cube.transformed(tr)
-        draw_show_figs([cut_cube, c1], colors, l, r)
+        draw_show_figs(name, [cut_cube, c1], colors, l, r)
 
     # 10-th transform
     line_ax = Line(y[[3, 9], :])
     line_rotation = line_ax.rotation_mtx(-np.pi)
     cut_cube_rotated = cut_cube.transformed(line_rotation)
-    draw_show_figs([cut_cube, cut_cube_rotated], colors, 0, 3)
+    draw_show_figs("Rotate around some axis", [cut_cube, cut_cube_rotated], colors, 0, 3)
 
     # Last transform
     pl = Plane(y[[2, 3, 9], :])
@@ -256,7 +256,7 @@ def main():
 
     pl_tr = pl.transformed(reflection_mtx)
 
-    draw_show_figs([cut_cube, pl_tr, cut_cube_reflected], colors, 0, 4)
+    draw_show_figs("Reflection", [cut_cube, pl_tr, cut_cube_reflected], colors, 0, 4)
 
 
 if __name__ == "__main__":
