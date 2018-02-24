@@ -1,6 +1,6 @@
 import numpy as np
 from math import sin, cos, atan2, sqrt
-from pyhull.convex_hull import qconvex
+from qhull_convex import qconvex
 from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
