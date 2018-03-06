@@ -85,19 +85,6 @@ class IterativeShiftedLine(IterativeLine):
         self.p[:, 1] = self.p[:, 1] + y_shift
 
 
-class Circle(IterativeShiftedLine):
-    def __init__(self, x0: float, y0: float, r: float, n: int=10):
-        phi = 2*np.pi / n
-        cf = cos(phi)
-        sf = sin(phi)
-
-        super().__init__(r, 0,
-                         lambda x, y: x * cf - y * sf,
-                         lambda x, y: x * sf + y * cf,
-                         n, True,
-                         x0, y0)
-
-
 class Ellipse(IterativeShiftedLine):
     def __init__(self, x0: float, y0: float, a: float, b: float, n: int = 10):
         phi = 2 * np.pi / n
@@ -113,6 +100,11 @@ class Ellipse(IterativeShiftedLine):
                          lambda x, y: x * sf_b_a + y * cf,
                          n, True,
                          x0, y0)
+
+
+class Circle(Ellipse):
+    def __init__(self, x0: float, y0: float, r: float, n: int=10):
+        super().__init__(x0, y0, r, r, n)
 
 
 class ParabolaBranch(IterativeLine):
