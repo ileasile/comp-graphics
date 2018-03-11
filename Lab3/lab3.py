@@ -4,7 +4,7 @@ from mpl_backend_workaround import MPL_BACKEND_USED
 import matplotlib.lines as m_lines
 import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
-from typing import Iterable, Callable
+from typing import Iterable, Callable, Tuple, Any, List
 
 IterFunc = Callable[[float, float], float]
 
@@ -13,16 +13,7 @@ class Drawable:
     def transformed(self, transform: np.ndarray) -> 'Drawable':
         raise NotImplementedError()
 
-    def x_max(self) -> float:
-        raise NotImplementedError()
-
-    def x_min(self) -> float:
-        raise NotImplementedError()
-
-    def y_max(self) -> float:
-        raise NotImplementedError()
-
-    def y_min(self) -> float:
+    def b_box(self) -> Tuple[Tuple[float, float], Tuple[float, float]]:
         raise NotImplementedError()
 
     def draw(self, ax: Axes, col) -> None:
@@ -38,17 +29,11 @@ class Shape(Drawable):
         new_points = self.p @ transform
         return Shape(new_points, self.close)
 
-    def x_max(self) -> float:
-        return np.max(self.p[:, 0] / self.p[:, 2])
+    def b_box(self) -> Tuple[Tuple[float, float], Tuple[float, float]]:
+        x = self.p[:, 0] / self.p[:, 2]
+        y = self.p[:, 1] / self.p[:, 2]
 
-    def x_min(self) -> float:
-        return np.min(self.p[:, 0] / self.p[:, 2])
-
-    def y_max(self) -> float:
-        return np.max(self.p[:, 1] / self.p[:, 2])
-
-    def y_min(self) -> float:
-        return np.min(self.p[:, 1] / self.p[:, 2])
+        return (np.min(x), np.min(y)), (np.max(x), np.max(y))
 
     def draw(self, ax: Axes, col) -> None:
         pt = np.transpose(self.p)
@@ -143,17 +128,17 @@ class MultiShape(Drawable):
         s = [c.transformed(transform) for c in self.s]
         return MultiShape(s)
 
-    def x_max(self) -> float:
-        return max([f.x_max() for f in self.s])
+    @staticmethod
+    def bounding_box(s: Iterable[Drawable]) -> Tuple[Tuple[float, float], Tuple[float, float]]:
+        b = [f.b_box() for f in s]
+        x_min = min([t[0][0] for t in b])
+        y_min = min([t[0][1] for t in b])
+        x_max = max([t[1][0] for t in b])
+        y_max = max([t[1][1] for t in b])
+        return (x_min, y_min), (x_max, y_max)
 
-    def x_min(self) -> float:
-        return min([f.x_min() for f in self.s])
-
-    def y_max(self) -> float:
-        return max([f.y_max() for f in self.s])
-
-    def y_min(self) -> float:
-        return min([f.y_min() for f in self.s])
+    def b_box(self) -> Tuple[Tuple[float, float], Tuple[float, float]]:
+        return MultiShape.bounding_box(self.s)
 
     def draw(self, ax, col) -> None:
         for f in self.s:
@@ -187,7 +172,7 @@ class Parabola(MultiShape):
         super().__init__([up_branch, lo_branch])
 
 
-def draw_figs(figs, colors, title):
+def draw_figs(figs: Iterable[Drawable], colors: List[Any], title: str):
     fig, ax = plt.subplots()
     fig.canvas.set_window_title(title)
     manager = plt.get_current_fig_manager()
@@ -195,10 +180,7 @@ def draw_figs(figs, colors, title):
 
     ax.set_aspect('equal')
 
-    x_min = min([f.x_min() for f in figs])
-    x_max = max([f.x_max() for f in figs])
-    y_min = min([f.y_min() for f in figs])
-    y_max = max([f.y_max() for f in figs])
+    (x_min, y_min), (x_max, y_max) = MultiShape.bounding_box(figs)
 
     percent_left = 0.1
     x_inc = (x_max - x_min) * percent_left
