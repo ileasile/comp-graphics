@@ -5,6 +5,9 @@ import matplotlib.lines as m_lines
 import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
 from typing import Iterable, Callable, Tuple, Any, List
+from config import CONFIG
+from scipy.special import binom
+from numpy.polynomial.polynomial import polyval
 
 IterFunc = Callable[[float, float], float]
 
@@ -172,6 +175,28 @@ class Parabola(MultiShape):
         super().__init__([up_branch, lo_branch])
 
 
+class BezierCurve(Shape):
+    def __init__(self, points: List[Tuple[float, float]], n_steps: int = 100):
+        p = np.ones((n_steps, 3))
+
+        b_poly = [np.poly1d([])] * 2
+        t_poly = np.poly1d([1., 0.])
+        t_1_poly = np.poly1d([-1., 1.])
+        n = len(points) - 1
+        for i, pt in enumerate(points):
+            pt_a = binom(n, i) * np.array(pt)
+            b = (t_poly ** i) * (t_1_poly ** (n - i))
+            for j in range(2):
+                b_poly[j] += np.poly1d([pt_a[j]]) * b
+
+        coef = np.zeros((n + 1, 2), dtype=np.float64)
+        for i in range(2):
+            coef[: b_poly[i].order + 1, i] = b_poly[i].coef[::-1]
+        p[:, :2] = polyval(np.linspace(0, 1, n_steps), coef, tensor=True).transpose()
+
+        super().__init__(p, False)
+
+
 def draw_figs(figs: Iterable[Drawable], colors: List[Any], title: str):
     fig, ax = plt.subplots()
     fig.canvas.set_window_title(title)
@@ -230,23 +255,34 @@ def main():
         title = 'Figure' if 'title' not in kwargs else kwargs['title']
         draw_figs(figs, colors, title)
 
-    c = Circle(0, 0, 1, 100)
-    cb = Circle(0.5, 0.3, 1.5, 20)
-    draw(c, cb, title='Circles')
+    if CONFIG['draw_simple_lines']:
+        c = Circle(0, 0, 1, 100)
+        cb = Circle(0.5, 0.3, 1.5, 20)
+        draw(c, cb, title='Circles')
 
-    el = Ellipse(0, 0, 4, 1, 20)
-    tr = rotate_transform(np.pi/6) @ shift_transform(2, 2)
-    el_t = el.transformed(tr)
-    draw(el, el_t, title='Ellipses')
+        el = Ellipse(0, 0, 4, 1, 20)
+        tr = rotate_transform(np.pi/6) @ shift_transform(2, 2)
+        el_t = el.transformed(tr)
+        draw(el, el_t, title='Ellipses')
 
-    parabola = Parabola(.5, 4, 10)
-    tr = rotate_transform(np.pi / 4) @ shift_transform(1, 1)
-    parabola_t = parabola.transformed(tr)
+        parabola = Parabola(.5, 4, 10)
+        tr = rotate_transform(np.pi / 4) @ shift_transform(1, 1)
+        parabola_t = parabola.transformed(tr)
 
-    draw(parabola_t, title='Parabola')
+        draw(parabola_t, title='Parabola')
 
-    h = Hyperbola(2, 1, 5., 20)
-    draw(h, title='Hyperbola')
+        h = Hyperbola(2, 1, 5., 20)
+        draw(h, title='Hyperbola')
+
+    if CONFIG['draw_bezier']:
+        bezier_linear = BezierCurve([(0, 0), (1, 3)])
+        draw(bezier_linear, title='Linear bezier curve')
+
+        bezier_quadratic = BezierCurve([(0, 0), (2, -5), (4, 0)])
+        draw(bezier_quadratic, title='Quadratic bezier curve')
+
+        bezier_cubic = BezierCurve([(0, 0), (1, 3), (2, -3), (4, 1)])
+        draw(bezier_cubic, title='Cubic bezier curve')
 
 
 if __name__ == "__main__":
