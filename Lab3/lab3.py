@@ -240,7 +240,10 @@ def main():
     draw(el, el_t, title='Ellipses')
 
     parabola = Parabola(.5, 4, 10)
-    draw(parabola, title='Parabola')
+    tr = rotate_transform(np.pi / 4) @ shift_transform(1, 1)
+    parabola_t = parabola.transformed(tr)
+
+    draw(parabola_t, title='Parabola')
 
     h = Hyperbola(2, 1, 5., 20)
     draw(h, title='Hyperbola')
