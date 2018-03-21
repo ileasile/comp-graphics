@@ -189,10 +189,55 @@ class BezierCurve(Shape):
             for j in range(2):
                 b_poly[j] += np.poly1d([pt_a[j]]) * b
 
-        coef = np.zeros((n + 1, 2), dtype=np.float64)
+        coefficients = np.zeros((n + 1, 2), dtype=np.float64)
         for i in range(2):
-            coef[: b_poly[i].order + 1, i] = b_poly[i].coef[::-1]
-        p[:, :2] = polyval(np.linspace(0, 1, n_steps), coef, tensor=True).transpose()
+            coefficients[: b_poly[i].order + 1, i] = b_poly[i].coef[::-1]
+        p[:, :2] = polyval(np.linspace(0, 1, n_steps), coefficients, tensor=True).transpose()
+
+        super().__init__(p, False)
+
+
+class Spline(Shape):
+    def __init__(self, points: List[Tuple[float, float]], p1d, pnd, n_steps: int = 100):
+        n = len(points) - 1
+        dp = np.zeros((n+1, 2), dtype=np.float)
+        for i, tp in enumerate(points):
+            dp[i, :] = tp
+
+        t = np.sqrt((dp[1:, 0] - dp[:-1, 0]) ** 2 + (dp[1:, 1] - dp[:-1, 1]) ** 2)
+
+        a = np.identity(n + 1, dtype=np.float)
+        for i in range(1, n):
+            a[i, i - 1] = t[i]
+            a[i, i + 1] = t[i - 1]
+            a[i, i] = 2 * (t[i] + t[i - 1])
+
+        b = np.zeros((n + 1, 2), dtype=np.float)
+        b[0, :] = p1d
+        b[n, :] = pnd
+        for i in range(1, n):
+            b[i, :] = 3.0/(t[i-1] * t[i]) *\
+                      (t[i - 1] ** 2 * (dp[i + 1, :] - dp[i, :]) +
+                       t[i] ** 2 * (dp[i, :] - dp[i - 1, :]))
+
+        pd = np.linalg.inv(a) @ b
+
+        p_list = []
+        n_per_iter = n_steps // n + 1
+        for i in range(n):
+            taus = np.linspace(0, 1, n_per_iter).reshape((n_per_iter, 1))
+            t2 = taus ** 2
+            t3 = t2 * taus
+            f_vec = np.hstack([2 * t3 - 3 * t2 + 1,
+                               -2 * t3 + 3 * t2,
+                               taus * (taus - 1)**2 * t[i],
+                               taus * (t2 - taus) * t[i]])
+            p_vec = np.vstack([dp[i, :], dp[i+1, :], pd[i, :], pd[i+1, :]])
+            seg_points = f_vec @ p_vec
+            seg_points = np.hstack([seg_points, np.ones((n_per_iter, 1))])
+            p_list.append(seg_points)
+
+        p = np.vstack(p_list)
 
         super().__init__(p, False)
 
@@ -283,6 +328,10 @@ def main():
 
         bezier_cubic = BezierCurve([(0, 0), (1, 3), (2, -3), (4, 1)])
         draw(bezier_cubic, title='Cubic bezier curve')
+
+    if CONFIG['draw_splines']:
+        cubic_spline = Spline([(-3, 0), (0, 2), (2, 6), (4, -3)], (1, 1), (1, 1), 100)
+        draw(cubic_spline, title='Cubic spline')
 
 
 if __name__ == "__main__":
