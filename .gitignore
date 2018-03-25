@@ -9,3 +9,4 @@ OpenBLAS-0.2.20/**
 .idea
 *.zip
 **/__pycache__
+.python-version
