@@ -197,8 +197,80 @@ class BezierCurve(Shape):
         super().__init__(p, False)
 
 
+class SplineCondition:
+    def a_apply(self, a: np.ndarray, t: np.ndarray):
+        raise NotImplementedError()
+
+    def b_apply(self, b: np.ndarray, t: np.ndarray, p: np.ndarray):
+        raise NotImplementedError()
+
+    def get_point_diff(self, a: np.ndarray, b: np.ndarray, t: np.ndarray, p: np.ndarray):
+        self.a_apply(a, t)
+        self.b_apply(b, t, p)
+        return np.linalg.inv(a) @ b
+
+
+class SplineFixedCondition(SplineCondition):
+    def __init__(self, p1d, pnd):
+        self.p1d = p1d
+        self.pnd = pnd
+
+    def a_apply(self, a: np.ndarray, t: np.ndarray):
+        a[0, 0] = 1
+        a[-1, -1] = 1
+
+    def b_apply(self, b: np.ndarray, t: np.ndarray, p: np.ndarray):
+        b[0, :] = self.p1d
+        b[-1, :] = self.pnd
+
+
+class SplineWeakCondition(SplineCondition):
+    def a_apply(self, a: np.ndarray, t: np.ndarray):
+        a[0, 0] = 1
+        a[0, 1] = .5
+        a[-1, -2] = 2
+        a[-1, -1] = 4
+
+    def b_apply(self, b: np.ndarray, t: np.ndarray, p: np.ndarray):
+        b[0, :] = 3.*(p[1, :] - p[0, :]) / (2 * t[0])
+        b[-1, :] = 6.*(p[-1, :] - p[-2, :])/t[-1]
+
+
+class SplineCyclicCondition(SplineCondition):
+    def a_apply(self, a: np.ndarray, t: np.ndarray):
+        a[0, 0] = 2 * (1 + t[-1] / t[0])
+        a[0, 1] = t[-1] / t[0]
+        a[0, -2] = 1
+
+    def b_apply(self, b: np.ndarray, t: np.ndarray, p: np.ndarray):
+        b[0, :] = 3.*((t[-1] / t[0] ** 2) * (p[1, :] - p[0, :]) - (p[-2, :] - p[-1, :])/t[-1])
+
+    def get_point_diff(self, a: np.ndarray, b: np.ndarray, t: np.ndarray, p: np.ndarray):
+        self.a_apply(a, t)
+        self.b_apply(b, t, p)
+        pd = np.zeros((a.shape[0], 2), dtype=a.dtype)
+        pd[:-1, :] = np.linalg.inv(a[:-1, :-1]) @ b[:-1, :]
+        pd[-1, :] = pd[0, :]
+        return pd
+
+
+class SplineAcyclicCondition(SplineCyclicCondition):
+    def a_apply(self, a: np.ndarray, t: np.ndarray):
+        a[0, 0] = 2 * (1 + t[-1] / t[0])
+        a[0, 1] = t[-1] / t[0]
+        a[0, -2] = -1
+
+    def b_apply(self, b: np.ndarray, t: np.ndarray, p: np.ndarray):
+        b[0, :] = 3. * ((t[-1] / t[0] ** 2) * (p[1, :] - p[0, :]) + (p[-2, :] - p[-1, :]) / t[-1])
+
+    def get_point_diff(self, a: np.ndarray, b: np.ndarray, t: np.ndarray, p: np.ndarray):
+        pd = super().get_point_diff(a, b, t, p)
+        pd[-1, :] = -pd[0, :]
+        return pd
+
+
 class Spline(Shape):
-    def __init__(self, points: List[Tuple[float, float]], p1d, pnd, n_steps: int = 100):
+    def __init__(self, points: List[Tuple[float, float]], edge_condition: SplineCondition, n_steps: int = 100):
         n = len(points) - 1
         dp = np.zeros((n+1, 2), dtype=np.float)
         for i, tp in enumerate(points):
@@ -206,21 +278,19 @@ class Spline(Shape):
 
         t = np.sqrt((dp[1:, 0] - dp[:-1, 0]) ** 2 + (dp[1:, 1] - dp[:-1, 1]) ** 2)
 
-        a = np.identity(n + 1, dtype=np.float)
+        a = np.zeros((n + 1, n + 1), dtype=np.float)
         for i in range(1, n):
             a[i, i - 1] = t[i]
             a[i, i + 1] = t[i - 1]
             a[i, i] = 2 * (t[i] + t[i - 1])
 
         b = np.zeros((n + 1, 2), dtype=np.float)
-        b[0, :] = p1d
-        b[n, :] = pnd
         for i in range(1, n):
             b[i, :] = 3.0/(t[i-1] * t[i]) *\
                       (t[i - 1] ** 2 * (dp[i + 1, :] - dp[i, :]) +
                        t[i] ** 2 * (dp[i, :] - dp[i - 1, :]))
 
-        pd = np.linalg.inv(a) @ b
+        pd = edge_condition.get_point_diff(a, b, t, dp)
 
         p_list = []
         n_per_iter = n_steps // n + 1
@@ -330,8 +400,16 @@ def main():
         draw(bezier_cubic, title='Cubic bezier curve')
 
     if CONFIG['draw_splines']:
-        cubic_spline = Spline([(-3, 0), (0, 2), (2, 6), (4, -3)], (1, 1), (1, 1), 100)
-        draw(cubic_spline, title='Cubic spline')
+        conditions = [
+            (SplineFixedCondition((1, 1), (1, 1)), "fixed condition"),
+            (SplineWeakCondition(), "weak condition"),
+            (SplineCyclicCondition(), "cyclic condition"),
+            (SplineAcyclicCondition(), "acyclic condition"),
+        ]
+
+        for c, half_title in conditions:
+            cubic_spline = Spline([(-3, 0), (0, 2), (2, 6), (4, -3)], c, 100)
+            draw(cubic_spline, title='Cubic spline: {}'.format(half_title))
 
 
 if __name__ == "__main__":
