@@ -391,12 +391,12 @@ def main():
 
     if CONFIG['draw_bezier']:
         bezier_linear = BezierCurve([(0, 0), (1, 3)])
-        draw(bezier_linear, title='Linear bezier curve')
+        # draw(bezier_linear, title='Linear bezier curve')
 
         bezier_quadratic = BezierCurve([(0, 0), (2, -5), (4, 0)])
-        draw(bezier_quadratic, title='Quadratic bezier curve')
+        # draw(bezier_quadratic, title='Quadratic bezier curve')
 
-        bezier_cubic = BezierCurve([(0, 0), (1, 3), (2, -3), (4, 1)])
+        bezier_cubic = BezierCurve([(-3, 0), (0, 2), (2, 6), (4, -3)])
         draw(bezier_cubic, title='Cubic bezier curve')
 
     if CONFIG['draw_splines']:
